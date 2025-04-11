@@ -1,4 +1,4 @@
-user_management_common_timesheet_mfdenison_hopkinsep==0.0.5
+user_management_common_timesheet_mfdenison_hopkinsep==0.0.6
 fastapi==0.95.2
 uvicorn==0.22.0
 Jinja2==3.1.2

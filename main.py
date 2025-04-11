@@ -8,6 +8,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.templating import Jinja2Templates
+from functions_framework import create_app
 import pkg_resources
 from sqlmodel import select
 
@@ -36,7 +37,7 @@ app.include_router(router, prefix="/api/user")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://main.d2ue7g6a4mt1cl.amplifyapp.com"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -297,7 +298,27 @@ async def current_week_endpoint():
     end = start + timedelta(days=4)
     return JSONResponse({"week_start_date": str(start), "week_end_date": str(end)})
 
+@app.get("/")
+def root():
+    return {"message": "Hello from GCP Cloud Function + FastAPI!"}
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
+# Here is the debug route to show all endpoints (optional, but helpful):
+@app.get("/debug-routes", include_in_schema=False)
+def debug_routes():
+    routes_list = []
+    for route in app.routes:
+        routes_list.append({
+            "path": route.path,
+            "methods": list(route.methods),
+            "name": route.name
+        })
+    return {"routes": routes_list}
+
+# Use the function name that GCP will call as your entrypoint:
+def main(request: Request):
+    """
+    This is the function GCP calls when the HTTP-triggered Cloud Function is invoked.
+    We wrap the FastAPI `app` using functions_framework.create_app(app).
+    """
+    asgi_app = create_app(app)  # Convert FastAPI -> WSGI/ASGI for GCF
+    return asgi_app(request)

@@ -9,3 +9,4 @@ google-cloud-logging>=3.0.0
 google-cloud-pubsub>=2.14.0
 psycopg2-binary
 dotenv
+functions-framework==3.2.1

@@ -21,9 +21,7 @@ from user_management_common_timesheet_mfdenison_hopkinsep.utils import send_mess
 
 import google.cloud.logging
 
-# ----------------------------
-# Setup Logging
-# ----------------------------
+
 client = google.cloud.logging.Client()
 client.setup_logging()
 logger = logging.getLogger(__name__)

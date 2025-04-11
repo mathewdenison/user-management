@@ -4,11 +4,11 @@ import logging
 from datetime import datetime, timedelta, date
 from typing import Optional
 
+import uvicorn
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.templating import Jinja2Templates
-from functions_framework import create_app
 import pkg_resources
 from sqlmodel import select
 
@@ -315,10 +315,6 @@ def debug_routes():
     return {"routes": routes_list}
 
 # Use the function name that GCP will call as your entrypoint:
-def main(request: Request):
-    """
-    This is the function GCP calls when the HTTP-triggered Cloud Function is invoked.
-    We wrap the FastAPI `app` using functions_framework.create_app(app).
-    """
-    asgi_app = create_app(app)  # Convert FastAPI -> WSGI/ASGI for GCF
-    return asgi_app(request)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)

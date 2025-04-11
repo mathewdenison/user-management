@@ -13,6 +13,7 @@ from sqlmodel import select
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from fastapi.middleware.cors import CORSMiddleware
 
 from user_management_common_timesheet_mfdenison_hopkinsep.models import Employee, RoleEnum, EmployeeSerializer
 from user_management_common_timesheet_mfdenison_hopkinsep.database import get_session
@@ -29,6 +30,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://main.d2ue7g6a4mt1cl.amplifyapp.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ----------------------------
 # Setup Templates (for login HTML)

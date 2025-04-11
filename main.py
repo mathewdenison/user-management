@@ -297,3 +297,7 @@ async def current_week_endpoint():
     end = start + timedelta(days=4)
     return JSONResponse({"week_start_date": str(start), "week_end_date": str(end)})
 
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)

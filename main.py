@@ -21,6 +21,8 @@ from user_management_common_timesheet_mfdenison_hopkinsep.utils import send_mess
 
 import google.cloud.logging
 
+from fastapi import APIRouter
+
 
 client = google.cloud.logging.Client()
 client.setup_logging()
@@ -28,6 +30,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 app = FastAPI()
+
+router = APIRouter()
+app.include_router(router, prefix="/api/user")
 
 app.add_middleware(
     CORSMiddleware,
@@ -104,12 +109,12 @@ async def is_manager_or_hr(user: Employee = Depends(get_current_user)) -> Employ
 # ----------------------------
 
 # Serve the login form HTML template.
-@app.get("/login/", response_class=HTMLResponse)
+@router.get("/login/", response_class=HTMLResponse)
 async def login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 # Login endpoint: verifies username/password against the Employee model and returns a JWT token.
-@app.post("/login/")
+@router.post("/login/")
 async def login_view(request: Request):
     data = await request.json()
     username = data.get("username")
@@ -131,12 +136,12 @@ async def login_view(request: Request):
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-@app.post("/logout/")
+@router.post("/logout/")
 async def logout_view():
     return JSONResponse({"message": "You have been logged out successfully."})
 
 # Employee List View (restricted to Managers or HR)
-@app.get("/employees/")
+@router.get("/employees/")
 async def employee_list(user: Employee = Depends(is_manager_or_hr)):
     session = get_session()
     if user.role == RoleEnum.HR:
@@ -151,7 +156,7 @@ async def employee_list(user: Employee = Depends(is_manager_or_hr)):
     return JSONResponse({"employees": serialized_employees})
 
 # Submit TimeLog (employee submits a timesheet)
-@app.post("/employees/{employee_id}/submit_timesheet/")
+@router.post("/employees/{employee_id}/submit_timesheet/")
 async def submit_timelog(employee_id: int, request: Request, user: Employee = Depends(get_current_user)):
     # Ensure that the signed-in employee matches the employee_id provided in the URL.
     if employee_id != user.id:
@@ -172,7 +177,7 @@ async def submit_timelog(employee_id: int, request: Request, user: Employee = De
     return JSONResponse({"message": "Time log sent for processing.", "message_id": message_id})
 
 # Get TimeLog for an employee.
-@app.get("/employees/{employee_id}/get_timesheet/")
+@router.get("/employees/{employee_id}/get_timesheet/")
 async def get_timelog(employee_id: int, user: Employee = Depends(get_current_user)):
     # If the signed-in user is neither HR nor Manager, they can only request their own timesheet.
     if user.role not in [RoleEnum.HR, RoleEnum.Manager] and user.id != employee_id:
@@ -183,7 +188,7 @@ async def get_timelog(employee_id: int, user: Employee = Depends(get_current_use
     return JSONResponse({"message": "Time log retrieval request sent.", "message_id": message_id})
 
 # Retrieve Employee TimeLogs for current user.
-@app.get("/employees/timelogs/")
+@router.get("/employees/timelogs/")
 async def employee_timelogs(user: Employee = Depends(get_current_user)):
     session = get_session()
     if user.role == RoleEnum.HR:
@@ -198,7 +203,7 @@ async def employee_timelogs(user: Employee = Depends(get_current_user)):
     return JSONResponse({"message": "Time log list request sent.", "message_id": message_id})
 
 # Update PTO View (restricted to HR only)
-@app.patch("/employees/{employee_id}/pto/")
+@router.patch("/employees/{employee_id}/pto/")
 async def update_pto(employee_id: int, request: Request, user: Employee = Depends(get_current_user)):
     if user.role != RoleEnum.HR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only HR can update PTO balance.")
@@ -211,7 +216,7 @@ async def update_pto(employee_id: int, request: Request, user: Employee = Depend
     return JSONResponse({"message": "PTO update request sent.", "message_id": message_id})
 
 # Get current pay period
-@app.get("/payPeriod/")
+@router.get("/payPeriod/")
 async def current_week_view():
     today = date.today()
     if today.weekday() >= 5:
@@ -222,7 +227,7 @@ async def current_week_view():
     return JSONResponse({"week_start_date": str(start), "week_end_date": str(end)})
 
 # Get PTO view (get PTO details by employee_id)
-@app.get("/ptoBalance/")
+@router.get("/ptoBalance/")
 async def get_pto(employee_id: Optional[str] = None):
     if not employee_id:
         raise HTTPException(status_code=400, detail="employee_id is required")
@@ -231,7 +236,7 @@ async def get_pto(employee_id: Optional[str] = None):
     return JSONResponse({"message": "PTO retrieval request sent.", "message_id": message_id})
 
 # Update TimeLog View (patch update for TimeLog)
-@app.patch("/timelogs/update/{pk}/")
+@router.patch("/timelogs/update/{pk}/")
 async def update_timelog(pk: int, request: Request, user: Employee = Depends(get_current_user)):
     data = await request.json()
     if not data:
@@ -242,7 +247,7 @@ async def update_timelog(pk: int, request: Request, user: Employee = Depends(get
     return JSONResponse({"message": "Time log update request sent.", "message_id": message_id})
 
 # Bulk PTO View (POST endpoint for bulk PTO update, restricted to HR)
-@app.post("/bulk_pto/")
+@router.post("/bulk_pto/")
 async def bulk_pto(request: Request, user: Employee = Depends(get_current_user)):
     if user.role != RoleEnum.HR:
         raise HTTPException(status_code=403, detail="Only HR can perform bulk PTO updates.")
@@ -254,7 +259,7 @@ async def bulk_pto(request: Request, user: Employee = Depends(get_current_user))
     return JSONResponse({"message": "Bulk PTO update request sent.", "message_id": message_id})
 
 # Alternate Employee TimeLogs View
-@app.get("/employeeTimeLogs/")
+@router.get("/employeeTimeLogs/")
 async def employee_time_logs_alt(user: Employee = Depends(get_current_user)):
     session = get_session()
     if user.role == RoleEnum.HR:
@@ -269,7 +274,7 @@ async def employee_time_logs_alt(user: Employee = Depends(get_current_user)):
     return JSONResponse({"message": "Time log list request sent.", "message_id": message_id})
 
 # Alternate PTO Update View (restricted to HR)
-@app.patch("/employees/{employee_id}/pto/update/")
+@router.patch("/employees/{employee_id}/pto/update/")
 async def pto_update_view(employee_id: int, request: Request, user: Employee = Depends(get_current_user)):
     if user.role != RoleEnum.HR:
         raise HTTPException(status_code=403, detail="Only HR can update PTO balance.")
@@ -282,7 +287,7 @@ async def pto_update_view(employee_id: int, request: Request, user: Employee = D
     return JSONResponse({"message": "PTO update request sent.", "message_id": message_id})
 
 # CurrentWeekView (alias for current pay period)
-@app.get("/CurrentWeekView/")
+@router.get("/CurrentWeekView/")
 async def current_week_endpoint():
     today = date.today()
     if today.weekday() >= 5:
